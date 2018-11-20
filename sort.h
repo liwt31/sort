@@ -142,6 +142,7 @@ static __inline size_t rbnd(size_t len) {
 #define MEDIAN                         SORT_MAKE_STR(median)
 #define QUICK_SORT                     SORT_MAKE_STR(quick_sort)
 #define MERGE_SORT                     SORT_MAKE_STR(merge_sort)
+#define MERGE_SORT_REC                 SORT_MAKE_STR(merge_sort_rec)
 #define MERGE_SORT_IN_PLACE            SORT_MAKE_STR(merge_sort_in_place)
 #define MERGE_SORT_IN_PLACE_RMERGE     SORT_MAKE_STR(merge_sort_in_place_rmerge)
 #define MERGE_SORT_IN_PLACE_BACKMERGE  SORT_MAKE_STR(merge_sort_in_place_backmerge)
@@ -572,48 +573,46 @@ void MERGE_SORT_IN_PLACE(SORT_TYPE *dst, const size_t len) {
   MERGE_SORT_IN_PLACE(dst, m);
 }
 
+void MERGE_SORT_REC(SORT_TYPE *dst, const size_t size, SORT_TYPE *pw){
+  SORT_TYPE *pl;
+  SORT_TYPE *pr;
+  SORT_TYPE *pm;
+  if (size < 16) {
+    BINARY_INSERTION_SORT(dst, size);
+    return;
+  }
+  pl = dst;
+  pr = dst + size;
+  pm = pl + ((pr - pl) >> 1);
+  MERGE_SORT_REC(pl, pm-pl, pw);
+  MERGE_SORT_REC(pm, pr-pm, pw);
+  memcpy(pw, pl, (pm-pl) * sizeof(SORT_TYPE));
+  while (pm < pr && pl < pm){
+      if (SORT_CMP(*pw, *pm) <= 0){
+          *pl++ = *pw++;
+      } else {
+          *pl++ = *pm++;
+      }
+  }
+  if (pl < pm) {
+      memcpy(pl, pw, (pm-pl)*sizeof(SORT_TYPE));
+  }
+  return;
+}
+
 /* Standard merge sort */
 void MERGE_SORT(SORT_TYPE *dst, const size_t size) {
-  SORT_TYPE *newdst;
-  const size_t middle = size / 2;
-  size_t out = 0;
-  size_t i = 0;
-  size_t j = middle;
+  SORT_TYPE *pw;
 
   /* don't bother sorting an array of size <= 1 */
   if (size <= 1) {
     return;
   }
+  pw = (SORT_TYPE *) malloc(size * sizeof(SORT_TYPE));
 
-  if (size < 16) {
-    BINARY_INSERTION_SORT(dst, size);
-    return;
-  }
+  MERGE_SORT_REC(dst, size, pw);
 
-  MERGE_SORT(dst, middle);
-  MERGE_SORT(&dst[middle], size - middle);
-  newdst = (SORT_TYPE *) malloc(size * sizeof(SORT_TYPE));
-
-  while (out != size) {
-    if (i < middle) {
-      if (j < size) {
-        if (SORT_CMP(dst[i], dst[j]) <= 0) {
-          newdst[out] = dst[i++];
-        } else {
-          newdst[out] = dst[j++];
-        }
-      } else {
-        newdst[out] = dst[i++];
-      }
-    } else {
-      newdst[out] = dst[j++];
-    }
-
-    out++;
-  }
-
-  memcpy(dst, newdst, size * sizeof(SORT_TYPE));
-  free(newdst);
+  free(pw);
 }
 
 
